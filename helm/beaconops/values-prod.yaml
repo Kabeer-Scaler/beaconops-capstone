@@ -2,6 +2,8 @@ frontend:
   replicaCount: 2
 backend:
   replicaCount: 2
+postgresql:
+  storageClassName: gp2
 ingress:
   enabled: true
 autoscaling:
