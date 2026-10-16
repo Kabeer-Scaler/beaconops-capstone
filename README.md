@@ -1,6 +1,6 @@
 # BeaconOps — Production Incident Command Center
 
-[![CI/CD](https://github.com/YOUR_GITHUB_USERNAME/beaconops-capstone/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/beaconops-capstone/actions/workflows/ci-cd.yml)
+[![CI/CD](https://github.com/Kabeer-Scaler/beaconops-capstone/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Kabeer-Scaler/beaconops-capstone/actions/workflows/ci-cd.yml)
 
 BeaconOps is an original SaaS-style incident-management application built for operations teams. Responders declare production incidents, assign an incident commander, prioritize severity, move a response through its lifecycle, search the active queue, and track live operational metrics.
 

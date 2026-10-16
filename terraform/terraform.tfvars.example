@@ -8,7 +8,7 @@ node_desired_size   = 2
 node_max_size       = 4
 
 # Replace with the repository created for this submission.
-github_repository = "YOUR_GITHUB_USERNAME/beaconops-capstone"
+github_repository = "Kabeer-Scaler/beaconops-capstone"
 
 # Set this only if the AWS account already has the GitHub Actions OIDC provider.
 github_oidc_provider_arn = ""
