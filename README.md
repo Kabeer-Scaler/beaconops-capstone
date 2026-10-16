@@ -451,7 +451,7 @@ Confirm the prompt only after reviewing the destroy plan. Capture `Destroy compl
 
 ## Evaluation evidence screenshots
 
-The screenshots below were captured from the working repository, the live AWS deployment, and the AWS Console on October 16, 2026. The complete evidence checklist, including the filenames reserved for the four screenshots already held by the project owner, is in [`screenshots/README.md`](screenshots/README.md).
+The screenshots below were captured from the working repository, Docker Compose, the live AWS deployment, Kubernetes, Prometheus, Grafana, and the AWS Console on October 16-17, 2026. The complete evidence checklist is in [`screenshots/README.md`](screenshots/README.md).
 
 ### BeaconOps application running on Amazon EKS
 
@@ -464,6 +464,24 @@ The production incident-command dashboard is loaded through the AWS Network Load
 ![FastAPI incident-management API](screenshots/02-swagger-crud-api.png)
 
 The live Swagger UI exposes system health/readiness routes and the incident-management REST surface, including GET, POST, PUT, and DELETE operations.
+
+### FastAPI health check
+
+![FastAPI health endpoint returning HTTP 200](screenshots/03-backend-health.png)
+
+The deployed backend `/health` endpoint returns HTTP 200 with an `UP` status, proving that the API is live and responding through the Kubernetes workload.
+
+### PostgreSQL incident persistence
+
+![Incident record stored in PostgreSQL](screenshots/04-postgresql-incidents.png)
+
+A query executed in the PostgreSQL pod returns the persisted incident record with its ID, title, service, severity, status, and commander.
+
+### Successful GitHub Actions deployment
+
+![Successful BeaconOps CI/CD workflow](screenshots/05-github-actions-success.png)
+
+The successful workflow shows all three jobs in green: source testing, container build/security scan/publication, and deployment to Amazon EKS.
 
 ### Backend automated tests passing
 
@@ -483,6 +501,18 @@ The public repository history shows a sequence of focused commits for the applic
 
 The root `.gitignore` excludes environment files, private keys, Terraform state and plans, dependency folders, test artifacts, logs, and private evidence material.
 
+### Docker Compose services healthy
+
+![Three healthy Docker Compose services](screenshots/09-docker-compose-services.png)
+
+The real `docker compose ps` result shows the frontend, backend, and PostgreSQL containers running with healthy status.
+
+### BeaconOps running through Docker Compose
+
+![BeaconOps running at localhost through Docker Compose](screenshots/10-docker-compose-browser.png)
+
+The complete incident-command interface loads at `http://localhost:3000`, proving the repository's one-command local reproduction path.
+
 ### Frontend image published to GHCR
 
 ![Frontend container image in GHCR](screenshots/11-ghcr-frontend-sha.png)
@@ -500,6 +530,30 @@ The public `beaconops-backend` package contains the same immutable full-SHA rele
 ![Backend and frontend Trivy scans passed](screenshots/13-trivy-backend-frontend-scans.png)
 
 The successful GitHub Actions image job shows checkmarks for both the backend and frontend Trivy scans before the registry sign-in and `Push SHA-tagged images` step. This proves that both release images passed the configured HIGH/CRITICAL vulnerability gate before publication.
+
+### Terraform infrastructure plan
+
+![Terraform non-empty infrastructure plan](screenshots/15-terraform-plan.png)
+
+The saved deployment plan contains the real AWS VPC, public/private subnet, EKS, managed-node-group, add-on, IAM, and GitHub OIDC resources, with `63 to add, 0 to change, 0 to destroy`.
+
+### EKS worker nodes ready
+
+![Two Amazon EKS worker nodes ready](screenshots/16-eks-worker-nodes-ready.png)
+
+Both managed worker nodes are in the Kubernetes `Ready` state and run the expected Amazon EKS Kubernetes version.
+
+### BeaconOps Kubernetes resources
+
+![BeaconOps pods services ingress and HPA](screenshots/17-beaconops-kubernetes-resources.png)
+
+The `beaconops` namespace shows running application and database pods, ClusterIP Services, the public NGINX Ingress address, and the backend HPA configured for two to six replicas.
+
+### Monitoring workloads running
+
+![Prometheus and Grafana monitoring pods running](screenshots/18-monitoring-pods-running.png)
+
+Alertmanager, Grafana, kube-state-metrics, Prometheus Operator, node exporters, and Prometheus are all running in the `monitoring` namespace.
 
 ### BeaconOps VPC resource map
 
@@ -525,6 +579,30 @@ The EKS Compute page shows the Terraform-managed `beaconops-workers` node group 
 
 The EKS Add-ons page shows the Amazon EBS CSI Driver, EKS Pod Identity Agent, Amazon VPC CNI, CoreDNS, and kube-proxy installed and healthy. This also provides direct evidence that the storage add-on issue encountered during provisioning was resolved.
 
+### Helm release deployed
+
+![BeaconOps Helm release deployed](screenshots/22-helm-release-deployed.png)
+
+`helm list -n beaconops` shows the `beaconops` release in `deployed` status with chart and application version `1.0.0`.
+
+### Prometheus application metrics
+
+![Prometheus metrics exposed by FastAPI](screenshots/23-prometheus-metrics-output.png)
+
+The backend `/metrics` endpoint exposes Prometheus-formatted request counters, duration histograms, and process metrics.
+
+### Prometheus target healthy
+
+![Prometheus scraping all BeaconOps targets](screenshots/24-prometheus-target-up.png)
+
+Prometheus discovers the BeaconOps ServiceMonitor and reports all four backend scrape endpoints as `UP`.
+
+### Grafana application-health dashboard
+
+![Populated BeaconOps Grafana dashboard](screenshots/25-grafana-dashboard.png)
+
+The provisioned dashboard displays request rate, p95 latency, ready backend replicas, and CPU usage. The 5xx panel correctly has no error-series data during the healthy observation window.
+
 ## Grading and evidence status
 
 The repository implementation covers all ten grading modules. The following facts were verified during the final audit:
@@ -538,16 +616,7 @@ The repository implementation covers all ten grading modules. The following fact
 - Helm lint and production template rendering successful
 - Live application reachable through the AWS Network Load Balancer
 
-The evidence gallery above contains the screenshots captured directly during this audit. Four additional screenshots already held by the project owner are reserved in [`screenshots/README.md`](screenshots/README.md): the successful GitHub Actions run, two ready EKS worker nodes, deployed BeaconOps Kubernetes resources, and running monitoring pods.
-
-Before final submission, the following remaining runtime-only evidence should still be captured if time permits:
-
-- A direct `/health` response and a PostgreSQL incident query
-- `docker compose ps` plus the application running through Docker Compose
-- The initial non-empty Terraform plan
-- `helm list -n beaconops` showing the deployed release
-- Prometheus-formatted `/metrics`, Prometheus target `UP`, and populated Grafana panels
-- `terraform destroy` completion after the demo
+The evidence gallery above contains every requested runtime screenshot except the intentionally deferred Terraform teardown. After the evaluation and demo are complete, run the documented teardown, capture `terraform destroy` completion as `screenshots/26-terraform-destroy-complete.png`, and mark the final item in [`screenshots/README.md`](screenshots/README.md).
 
 Use [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for the recording order and [`docs/RUBRIC-CHECKLIST.md`](docs/RUBRIC-CHECKLIST.md) for the complete point-by-point mapping.
 

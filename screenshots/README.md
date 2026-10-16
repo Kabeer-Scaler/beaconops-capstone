@@ -4,11 +4,11 @@ Use this folder for the final evidence images. Replace each `[ ]` with `[x]` aft
 
 Do not include AWS credentials, GitHub secrets, database passwords, Grafana passwords, `.env`, or `terraform.tfvars` in any screenshot.
 
-## Screenshots already held by the project owner
+## Screenshots supplied by the project owner
 
-Copy these four existing images into this folder using the filenames below; they were intentionally not recaptured.
+These four existing images have been copied into this folder using the required filenames.
 
-### [ ] `05-github-actions-success.png`
+### [x] `05-github-actions-success.png`
 
 **Title:** Successful BeaconOps CI/CD Pipeline
 
@@ -18,7 +18,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ---
 
-### [ ] `16-eks-worker-nodes-ready.png`
+### [x] `16-eks-worker-nodes-ready.png`
 
 **Title:** Amazon EKS Worker Nodes Ready
 
@@ -28,7 +28,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ---
 
-### [ ] `17-beaconops-kubernetes-resources.png`
+### [x] `17-beaconops-kubernetes-resources.png`
 
 **Title:** BeaconOps Kubernetes Workloads and Networking
 
@@ -38,7 +38,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ---
 
-### [ ] `18-monitoring-pods-running.png`
+### [x] `18-monitoring-pods-running.png`
 
 **Title:** Prometheus and Grafana Monitoring Stack
 
@@ -66,7 +66,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ---
 
-### [ ] `03-backend-health.png`
+### [x] `03-backend-health.png`
 
 **Title:** FastAPI Health Check
 
@@ -74,7 +74,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ---
 
-### [ ] `04-postgresql-incidents.png`
+### [x] `04-postgresql-incidents.png`
 
 **Title:** Incident Records Stored in PostgreSQL
 
@@ -106,7 +106,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ## M4 - Docker
 
-### [ ] `09-docker-compose-services.png`
+### [x] `09-docker-compose-services.png`
 
 **Title:** Three-Service Docker Compose Stack
 
@@ -114,7 +114,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ---
 
-### [ ] `10-docker-compose-browser.png`
+### [x] `10-docker-compose-browser.png`
 
 **Title:** BeaconOps Running Through Docker Compose
 
@@ -146,7 +146,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ## M7 - Terraform and AWS
 
-### [ ] `15-terraform-plan.png`
+### [x] `15-terraform-plan.png`
 
 **Title:** Terraform Infrastructure Plan
 
@@ -196,7 +196,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ## M8 - Helm
 
-### [ ] `22-helm-release-deployed.png`
+### [x] `22-helm-release-deployed.png`
 
 **Title:** BeaconOps Helm Release Deployed
 
@@ -204,7 +204,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ## M9 - Observability
 
-### [ ] `23-prometheus-metrics-output.png`
+### [x] `23-prometheus-metrics-output.png`
 
 **Title:** Prometheus Metrics Exposed by FastAPI
 
@@ -212,7 +212,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ---
 
-### [ ] `24-prometheus-target-up.png`
+### [x] `24-prometheus-target-up.png`
 
 **Title:** Prometheus Scraping BeaconOps Successfully
 
@@ -220,7 +220,7 @@ Copy these four existing images into this folder using the filenames below; they
 
 ---
 
-### [ ] `25-grafana-dashboard.png`
+### [x] `25-grafana-dashboard.png`
 
 **Title:** BeaconOps Application Health Dashboard
 
@@ -230,6 +230,6 @@ Copy these four existing images into this folder using the filenames below; they
 
 - The live EKS application screenshot supports both M1 and M8.
 - The combined Kubernetes resource screenshot already captured supports pods, replicas, Services, Ingress, and HPA.
-- The monitoring-pods screenshot proves installation, but Prometheus `UP` and a populated Grafana panel are still required separately.
-- The GitHub Actions summary proves pipeline success, but both GHCR package pages and both Trivy result steps should still be captured.
+- The monitoring-pods screenshot proves installation; the Prometheus `UP` target and populated Grafana dashboard are also captured separately.
+- The GitHub Actions summary, both GHCR package pages, and the combined backend/frontend Trivy result are captured.
 - Do not take the Terraform destroy screenshot until all live demonstrations and observability screenshots are complete.
