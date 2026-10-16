@@ -21,6 +21,6 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | quote }}
 {{- if .Values.externalDatabase.url -}}
 {{ .Values.externalDatabase.url }}
 {{- else -}}
-postgresql+psycopg://{{ .Values.postgresql.username }}:{{ .Values.postgresql.password }}@{{ include "beaconops.fullname" . }}-postgresql:5432/{{ .Values.postgresql.database }}
+postgresql+psycopg://{{ .Values.postgresql.username | urlquery }}:{{ .Values.postgresql.password | urlquery }}@{{ include "beaconops.fullname" . }}-postgresql:5432/{{ .Values.postgresql.database | urlquery }}
 {{- end -}}
 {{- end }}
