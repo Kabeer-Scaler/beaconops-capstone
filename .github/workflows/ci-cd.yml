@@ -1,0 +1,197 @@
+name: BeaconOps CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test and build source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install --requirement backend/requirements.txt
+
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest -v
+
+      - name: Compile-check Python source
+        run: python -m compileall -q backend/app
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  containerize:
+    name: Build, scan, and publish images
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      owner: ${{ steps.images.outputs.owner }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Normalize image names
+        id: images
+        shell: bash
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          load: true
+          push: false
+          tags: ghcr.io/${{ steps.images.outputs.owner }}/beaconops-backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          load: true
+          push: false
+          tags: ghcr.io/${{ steps.images.outputs.owner }}/beaconops-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Scan backend image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ steps.images.outputs.owner }}/beaconops-backend:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: false
+
+      - name: Scan frontend image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ steps.images.outputs.owner }}/beaconops-frontend:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: false
+
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push SHA-tagged images
+        shell: bash
+        run: |
+          docker push "ghcr.io/${{ steps.images.outputs.owner }}/beaconops-backend:${GITHUB_SHA}"
+          docker push "ghcr.io/${{ steps.images.outputs.owner }}/beaconops-frontend:${GITHUB_SHA}"
+
+  deploy:
+    name: Deploy to Amazon EKS
+    needs: containerize
+    if: ${{ vars.ENABLE_DEPLOYMENT == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.endpoint.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+
+      - name: Install cluster platform components
+        shell: bash
+        run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=nlb --wait --timeout 10m
+          helm upgrade --install metrics-server metrics-server/metrics-server --namespace kube-system --wait --timeout 5m
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace --values monitoring/kube-prometheus-stack-values.yaml --set-string grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD}" --wait --timeout 15m
+        env:
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+
+      - name: Configure registry access when a pull token is supplied
+        if: ${{ env.GHCR_PULL_TOKEN != '' }}
+        shell: bash
+        run: |
+          kubectl create namespace beaconops --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n beaconops create secret docker-registry ghcr-pull-secret --docker-server=ghcr.io --docker-username="${GITHUB_ACTOR}" --docker-password="${GHCR_PULL_TOKEN}" --dry-run=client -o yaml | kubectl apply -f -
+        env:
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+
+      - name: Deploy BeaconOps with Helm
+        shell: bash
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          PULL_SECRET_ARGS=()
+          if [ -n "${GHCR_PULL_TOKEN}" ]; then PULL_SECRET_ARGS=(--set 'imagePullSecrets[0].name=ghcr-pull-secret'); fi
+          helm upgrade --install beaconops ./helm/beaconops --namespace beaconops --create-namespace --values helm/beaconops/values-prod.yaml --set "frontend.image.repository=ghcr.io/${OWNER}/beaconops-frontend" --set "backend.image.repository=ghcr.io/${OWNER}/beaconops-backend" --set-string "frontend.image.tag=${GITHUB_SHA}" --set-string "backend.image.tag=${GITHUB_SHA}" --set-string "postgresql.password=${POSTGRES_PASSWORD}" "${PULL_SECRET_ARGS[@]}" --atomic --wait --timeout 10m
+          kubectl rollout status deployment/beaconops-beaconops-backend -n beaconops --timeout=5m
+          kubectl rollout status deployment/beaconops-beaconops-frontend -n beaconops --timeout=5m
+          kubectl get pods,services,ingress,hpa -n beaconops
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+
+      - name: Publish application endpoint
+        id: endpoint
+        shell: bash
+        run: |
+          HOST=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "url=http://${HOST}" >> "$GITHUB_OUTPUT"
+          echo "BeaconOps endpoint: http://${HOST}"
