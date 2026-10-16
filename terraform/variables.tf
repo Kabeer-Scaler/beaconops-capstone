@@ -55,6 +55,18 @@ variable "github_repository" {
   default     = ""
 }
 
+variable "github_repository_owner_id" {
+  description = "Immutable GitHub owner ID used in OIDC subjects for repositories created after July 15, 2026."
+  type        = string
+  default     = ""
+}
+
+variable "github_repository_id" {
+  description = "Immutable GitHub repository ID used in OIDC subjects for repositories created after July 15, 2026."
+  type        = string
+  default     = ""
+}
+
 variable "github_oidc_provider_arn" {
   description = "Existing GitHub Actions OIDC provider ARN. Leave empty to create one when github_repository is set."
   type        = string
