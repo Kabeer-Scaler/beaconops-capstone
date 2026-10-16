@@ -1,127 +1,479 @@
-# BeaconOps — Production Incident Command Center
+# BeaconOps - Production Incident Command Center
 
-[![CI/CD](https://github.com/Kabeer-Scaler/beaconops-capstone/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Kabeer-Scaler/beaconops-capstone/actions/workflows/ci-cd.yml)
+[![BeaconOps CI/CD](https://github.com/Kabeer-Scaler/beaconops-capstone/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Kabeer-Scaler/beaconops-capstone/actions/workflows/ci-cd.yml)
 
-BeaconOps is an original SaaS-style incident-management application built for operations teams. Responders declare production incidents, assign an incident commander, prioritize severity, move a response through its lifecycle, search the active queue, and track live operational metrics.
+BeaconOps is a full-stack incident-management platform for production operations teams. Responders can declare an incident, assign a commander, classify severity, advance the response lifecycle, filter the active queue, and review operational statistics. The application is delivered through a tested, security-scanned CI/CD pipeline to Amazon EKS and is monitored with Prometheus and Grafana.
 
-This repository is the complete DevOps capstone: application, automated tests, containerization, security gates, AWS infrastructure as code, Kubernetes packaging, autoscaling, observability, deployment automation, and troubleshooting exercises.
+Repository: [github.com/Kabeer-Scaler/beaconops-capstone](https://github.com/Kabeer-Scaler/beaconops-capstone)
 
-## Live environment
+Verified production pipeline: [GitHub Actions run #9](https://github.com/Kabeer-Scaler/beaconops-capstone/actions/runs/38919476385) deployed commit `6a1f963578ab82814efa4bb3a767c23d4ac00c1f` successfully.
 
-| Surface | URL |
-|---|---|
-| Application | Set after the first EKS deployment |
-| OpenAPI / Swagger | `<application-url>/docs` |
-| Health | `<application-url>/health` through a backend port-forward, or `/api` via Ingress |
-| Grafana | Exposed for the evaluation window using the command in `docs/DEPLOYMENT.md` |
+## What is included
 
-The CI/CD workflow writes the current Ingress load-balancer URL to the production environment after every successful deployment.
+- Responsive React incident-command dashboard
+- FastAPI CRUD and statistics API
+- PostgreSQL persistence with SQLAlchemy and Alembic
+- Eight isolated Pytest API tests
+- Multi-stage, non-root backend and frontend containers
+- Three-service Docker Compose stack
+- GitHub Actions test, build, scan, publish, and deploy pipeline
+- Trivy HIGH/CRITICAL container security gates
+- SHA-tagged images in GitHub Container Registry (GHCR)
+- Terraform-managed AWS VPC, networking, IAM, EKS, and worker nodes
+- GitHub OIDC authentication without stored AWS access keys
+- Helm-managed Deployments, Services, Ingress, PostgreSQL, HPA, probes, PDBs, and secrets
+- Prometheus ServiceMonitor and an auto-provisioned Grafana dashboard
+- Controlled autoscaling and troubleshooting exercises
 
 ## Architecture
 
 ```text
-Developer -> GitHub -> GitHub Actions
-                         |-- pytest (8 API tests, isolated SQLite database)
-                         |-- Vite production build
-                         |-- two non-root container builds
-                         |-- Trivy HIGH/CRITICAL gates
-                         `-- SHA-tagged images -> GHCR
-                                                |
-Terraform -> AWS VPC (2 AZs, public/private subnets, NAT) -> EKS
-                                                              |
-                                           ingress-nginx -> React/Nginx (2+ Pods)
-                                                          -> FastAPI (2–6 Pods, HPA)
-                                                                  |
-                                                         PostgreSQL StatefulSet + PVC
-                                                                  |
-                                            Prometheus <- /metrics -> Grafana dashboard
+Developer
+   |
+   | git push to main
+   v
+GitHub Actions
+   |-- Pytest + Python compile check
+   |-- React/Vite production build
+   |-- Build backend and frontend images
+   |-- Trivy HIGH/CRITICAL security gates
+   |-- Push full-SHA tags to GHCR
+   `-- Assume AWS role through GitHub OIDC
+                         |
+                         v
+Terraform             Amazon EKS
+   |                     |
+   |-- VPC (2 AZs)       |-- ingress-nginx -> AWS Network Load Balancer
+   |-- 2 public subnets  |                     |
+   |-- 2 private subnets |              Kubernetes Ingress
+   |-- NAT gateway       |                 /          /api
+   |-- IAM/OIDC          |                 |            |
+   `-- worker node group |          React/Nginx     FastAPI
+                         |            2 Pods       2-6 Pods (HPA)
+                         |                              |
+                         |                  PostgreSQL StatefulSet
+                         |                     5 Gi EBS PVC
+                         |
+                         `-- Prometheus <- ServiceMonitor <- /metrics
+                                      |
+                                   Grafana
 ```
 
-## Application capabilities
+The EKS control plane and worker group are created by Terraform. Application and platform workloads are reconciled by Helm from the deployment job. Worker nodes are private; the public subnets are reserved for internet-facing load balancers.
 
-- React 19 + Vite responsive incident-command dashboard
-- FastAPI REST API with OpenAPI documentation
-- PostgreSQL persistence through SQLAlchemy 2 and Alembic
-- Create, read, filter, update, and delete incident APIs
-- Liveness (`/health`), database readiness (`/ready`), and Prometheus (`/metrics`) endpoints
-- Loading, empty, validation, backend-error, and success states
-- Severity, status, service, commander, search, and operational statistics
+## Technology stack
 
-### REST API
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite 8, responsive CSS, unprivileged Nginx |
+| Backend | Python 3.12, FastAPI, Uvicorn, Pydantic |
+| Data | PostgreSQL 16 Alpine, SQLAlchemy 2, Alembic, EBS persistent storage |
+| Testing | Pytest, FastAPI TestClient, isolated SQLite test database |
+| Containers | Docker multi-stage builds, Docker Compose, GHCR |
+| CI/CD | GitHub Actions, Docker Buildx, Trivy, GitHub OIDC |
+| Infrastructure | Terraform 1.10+, AWS provider 6.x, VPC, IAM, EKS, EC2, EBS, NLB |
+| Kubernetes | EKS 1.37, Helm 3, ingress-nginx, Metrics Server, HPA |
+| Observability | Prometheus Operator, ServiceMonitor, Grafana, Alertmanager |
+
+## Repository structure
+
+```text
+backend/
+  app/                         FastAPI routes, models, schemas, and DB configuration
+  alembic/versions/            Versioned database migration
+  tests/                       Eight API tests and isolated DB fixtures
+  Dockerfile                   Multi-stage non-root Python image
+frontend/
+  src/                         React dashboard, API client, and responsive styles
+  nginx.conf                   Static hosting, health check, and Compose API proxy
+  Dockerfile                   Node build -> unprivileged Nginx runtime
+.github/workflows/ci-cd.yml    Test -> build -> scan -> publish -> deploy
+terraform/                     AWS VPC, IAM/OIDC, EKS, nodes, and EBS CSI identity
+helm/beaconops/                Complete application Helm chart
+k8s/namespace.yaml             Restricted beaconops namespace manifest
+monitoring/                    kube-prometheus-stack production values
+scripts/load-test.sh           Controlled HPA load generator
+troubleshooting/               Broken image and Service selector exercises
+docs/DEPLOYMENT.md             Detailed deployment runbook
+docs/EVIDENCE.md               Screenshot and demo evidence checklist
+docs/RUBRIC-CHECKLIST.md       Criterion-to-implementation mapping
+docker-compose.yml             Local frontend, backend, and PostgreSQL stack
+```
+
+## Application and API
+
+The frontend uses relative `/api` requests. In production, Kubernetes Ingress sends `/` to the frontend Service and `/api` to the backend Service. The browser never needs an internal Kubernetes hostname.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `GET` | `/api/incidents` | List and filter incidents |
+| `GET` | `/` | API identity and version |
+| `GET` | `/health` | Lightweight liveness response |
+| `GET` | `/ready` | Readiness response after a database query |
+| `GET` | `/metrics` | Prometheus-formatted application metrics |
+| `GET` | `/api/incidents` | List incidents, optionally filtered by status/severity |
 | `GET` | `/api/incidents/{id}` | Retrieve one incident |
 | `POST` | `/api/incidents` | Declare an incident |
-| `PUT` | `/api/incidents/{id}` | Update response ownership or status |
-| `DELETE` | `/api/incidents/{id}` | Remove an incident |
+| `PUT` | `/api/incidents/{id}` | Update status, commander, or incident data |
+| `DELETE` | `/api/incidents/{id}` | Delete an incident |
 | `GET` | `/api/incidents/stats` | Return dashboard KPIs |
-| `GET` | `/health`, `/ready`, `/metrics` | Kubernetes and observability probes |
 
-## Repository map
+Swagger/OpenAPI is available at `/docs`. Kubernetes probes use `/health`, `/ready`, and the frontend `/healthz` endpoint.
 
-```text
-backend/                 FastAPI, SQLAlchemy, Alembic, and pytest
-frontend/                React/Vite app and non-root Nginx runtime
-.github/workflows/       test -> build -> Trivy -> GHCR -> EKS pipeline
-terraform/               AWS VPC, EKS, workers, and GitHub OIDC role
-helm/beaconops/           Deployments, Services, Ingress, HPA, PostgreSQL, monitoring
-k8s/                     namespace bootstrap manifest
-monitoring/              Prometheus/Grafana stack values
-troubleshooting/         intentional ImagePullBackOff and Service selector faults
-scripts/                 controlled HPA load generator
-docs/                    deployment, operations, rubric, and evidence guides
-```
+## Local evaluator setup with Docker Compose
 
-## Quality gates
+Production runs on EKS; Docker Compose is retained as the rubric-required one-command reproduction path.
 
-Tests use a disposable SQLite database rather than production PostgreSQL:
+Requirements:
 
-```bash
-cd backend
-python -m pip install -r requirements.txt
-pytest -v
-```
+- Docker Desktop or Docker Engine with Compose v2
+- Ports `3000` and `8000` available
 
-The required one-command three-service stack remains available for evaluator reproduction:
+Start all three services:
 
 ```bash
 docker compose up --build
 ```
 
-This local command is not the production target. Production is the EKS environment deployed by `.github/workflows/ci-cd.yml`; see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+Open:
 
-## Delivery guarantees
+- Frontend: `http://localhost:3000`
+- Swagger: `http://localhost:8000/docs`
+- Health: `http://localhost:8000/health`
+- Metrics: `http://localhost:8000/metrics`
 
-- Tests and frontend compilation must pass before any image is built.
-- Both images are scanned separately; any HIGH or CRITICAL CVE fails the pipeline.
-- GHCR tags are the immutable full Git commit SHA—there is no `latest` deployment.
-- Helm uses an atomic rolling deployment and waits for readiness.
-- Runtime containers are non-root, drop Linux capabilities, block privilege escalation, and use read-only root filesystems where practical.
-- Kubernetes uses two frontend and two backend replicas, disruption budgets, resource limits, readiness/liveness probes, and backend HPA.
-- No cloud credentials or production passwords are stored in source control.
+Check container health:
 
-## Production deployment
+```bash
+docker compose ps
+curl http://localhost:8000/health
+```
 
-The deployment requires a GitHub repository and an AWS account. The concise sequence is:
+Stop the stack:
 
-1. Push this repository to GitHub.
-2. Run `terraform init`, `terraform plan`, and `terraform apply` from `terraform/`.
-3. Add the Terraform role output and production passwords to GitHub Actions secrets.
-4. Enable the deployment repository variable.
-5. Push to `main`; CI tests, scans, publishes, and deploys the exact SHA.
+```bash
+docker compose down
+```
 
-All settings and verification commands are documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Cost-safe teardown is documented there and in [`terraform/README.md`](terraform/README.md).
+To also delete the local database volume:
 
-## Security scan explanation
+```bash
+docker compose down -v
+```
 
-Trivy scans the operating-system packages and application dependencies inside both built images. The CI configuration exits with failure when a HIGH or CRITICAL vulnerability is found, so an affected image is never pushed or deployed; a clean scan means the vulnerability database found no matching unfixed or fixed findings at those severities at scan time, not that the software is guaranteed vulnerability-free.
+The Compose password defaults are development-only. Use environment variables for any shared environment.
 
-## Evaluation evidence
+## Tests and quality gates
 
-Use [`docs/EVIDENCE.md`](docs/EVIDENCE.md) during the final demo. It maps the required screenshots and live commands to all ten grading modules. [`docs/RUBRIC-CHECKLIST.md`](docs/RUBRIC-CHECKLIST.md) maps every point in `GRADING.md` to a concrete file or verification step.
+The test configuration overrides `DATABASE_URL` with `sqlite:///./beaconops-test.db`. The autouse fixture recreates the schema for every test, so tests never access production PostgreSQL.
 
-## Cost warning
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate       # Windows PowerShell: .\.venv\Scripts\Activate.ps1
+python -m pip install --requirement requirements.txt
+pytest -v
+```
 
-EKS, EC2 workers, a NAT gateway, EBS volumes, and load balancers incur AWS charges. Run the teardown sequence immediately after evaluation; deleting only Pods does not remove cloud infrastructure.
+The eight tests cover health/readiness, metrics, create, list/filter, retrieve, update, delete, statistics, validation, and missing resources. CI also compile-checks the Python source and runs a clean Vite production build.
+
+## Container design and security
+
+Both application images use multi-stage builds:
+
+- The backend installs dependencies into a virtual environment in a builder stage, removes packaging tools from the runtime, and runs as numeric UID/GID `10001`.
+- The frontend builds static assets with Node and serves only the build output from `nginxinc/nginx-unprivileged` as UID/GID `101`.
+- Kubernetes blocks privilege escalation, drops Linux capabilities, enables `RuntimeDefault` seccomp, and uses read-only root filesystems where practical.
+- PostgreSQL runs non-root as Alpine UID/GID `70`; `PGDATA` uses an owned child directory on the EBS volume.
+- Runtime configuration and database credentials come from Kubernetes Secrets, never from an image.
+
+Trivy scans operating-system packages and application dependencies in both built images. A HIGH or CRITICAL result exits with code `1`, preventing publication and deployment. A clean scan means no matching findings were present in Trivy's vulnerability database at scan time; it is not a guarantee that the image has no security risk.
+
+## AWS infrastructure with Terraform
+
+Terraform provisions:
+
+- One VPC across two Availability Zones
+- Two public subnets tagged for internet-facing load balancers
+- Two private subnets for EKS worker nodes
+- One NAT gateway for private-node egress
+- Amazon EKS 1.37 control plane
+- Managed `t3.medium` worker group with desired/minimum `2` and maximum `4`
+- CoreDNS, kube-proxy, VPC CNI, Pod Identity Agent, and EBS CSI add-ons
+- Dedicated EBS CSI Pod Identity role and AWS-managed policy
+- GitHub Actions OIDC provider, least-purpose deploy role, and EKS access entry
+
+### Prerequisites
+
+- AWS account with VPC, EC2, EKS, IAM, EBS, and load-balancer permissions
+- AWS CLI v2 authenticated with temporary credentials or IAM Identity Center
+- Terraform 1.10+, kubectl, and Helm 3
+- Public GitHub repository and a billing alert
+
+### Configure variables
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Set `github_repository` to `OWNER/REPOSITORY`. Repositories created after July 15, 2026 use GitHub immutable OIDC subjects, so also set `github_repository_owner_id` and `github_repository_id`. These numeric IDs are available from the GitHub REST API. Do not put AWS credentials in this file.
+
+`terraform.tfvars`, state files, plans, `.env` files, keys, virtual environments, and dependency folders are excluded by `.gitignore`.
+
+### Provision
+
+```bash
+terraform init
+terraform fmt -check -recursive
+terraform validate
+terraform plan -out=beaconops.tfplan
+terraform apply beaconops.tfplan
+```
+
+Important outputs:
+
+| Output | Use |
+|---|---|
+| `cluster_name` | GitHub `EKS_CLUSTER_NAME` variable |
+| `cluster_endpoint` | EKS API endpoint |
+| `github_actions_role_arn` | GitHub `AWS_ROLE_ARN` secret |
+| `configure_kubectl` | Command to create the local kubeconfig context |
+| `vpc_id` and subnet IDs | Infrastructure verification evidence |
+
+The checked-in Terraform configuration passes `terraform fmt -check -recursive` and `terraform validate`. Capture the initial non-empty plan and AWS console resources for grading before teardown.
+
+## GitHub configuration
+
+Add the following under **Settings -> Secrets and variables -> Actions**.
+
+### Secrets
+
+| Name | Purpose |
+|---|---|
+| `AWS_ROLE_ARN` | Terraform-created OIDC deploy role ARN |
+| `POSTGRES_PASSWORD` | Random production database password |
+| `GRAFANA_ADMIN_PASSWORD` | Separate random Grafana administrator password |
+| `GHCR_PULL_TOKEN` | Optional; only required while packages are private |
+
+### Variables
+
+| Name | Example |
+|---|---|
+| `AWS_REGION` | `ap-south-1` |
+| `EKS_CLUSTER_NAME` | `beaconops-production-eks` |
+| `ENABLE_DEPLOYMENT` | `true` |
+
+The workflow requests `id-token: write` only for the deploy job. AWS exchanges the GitHub OIDC token for short-lived credentials; no long-lived AWS key is stored in GitHub or the repository.
+
+## CI/CD pipeline
+
+`.github/workflows/ci-cd.yml` runs on every push to `main` and can also be started manually.
+
+```text
+Test and build source
+  -> Build, scan, and publish images
+      -> Deploy to Amazon EKS
+```
+
+### 1. Test and build source
+
+- Installs Python 3.12 dependencies
+- Runs `pytest -v`
+- Compile-checks backend source
+- Installs Node 22 dependencies with `npm ci`
+- Builds the React frontend
+
+### 2. Build, scan, and publish images
+
+- Builds backend and frontend images with Buildx
+- Scans each image independently with Trivy
+- Fails on HIGH or CRITICAL findings
+- Authenticates to GHCR with the job-scoped `GITHUB_TOKEN`
+- Pushes both images with the immutable full Git commit SHA; `latest` is not deployed
+
+### 3. Deploy to EKS
+
+- Assumes the AWS role through OIDC
+- Configures kubectl for the Terraform-created cluster
+- Installs/upgrades ingress-nginx, Metrics Server, and kube-prometheus-stack
+- Creates an optional GHCR pull secret only when a token is supplied
+- Performs an atomic Helm upgrade and waits for readiness
+- Captures pod logs and Kubernetes events if an atomic deployment fails
+- Publishes the Network Load Balancer URL to the GitHub production environment
+
+Jobs use `needs` dependencies, so a failed test, build, or security scan prevents promotion.
+
+## Kubernetes and Helm
+
+The Helm release is named `beaconops` in namespace `beaconops`.
+
+| Resource | Production behavior |
+|---|---|
+| Frontend Deployment | 2 replicas, probes, resource requests/limits, non-root Nginx |
+| Backend Deployment | 2 replicas, migration init container, probes, resource requests/limits |
+| Backend HPA | 2-6 replicas at 60% average CPU utilization |
+| PostgreSQL StatefulSet | 1 replica, non-root, 5 Gi `gp2` EBS-backed PVC |
+| Services | ClusterIP frontend/backend/database Services plus a stable backend alias |
+| Ingress | `/` -> frontend; `/api`, `/docs`, `/openapi.json` -> backend |
+| PDBs | Minimum one frontend and one backend Pod available during voluntary disruption |
+| ServiceMonitor | Scrapes backend metrics every 15 seconds |
+| Grafana dashboard | Provisioned through a labeled ConfigMap |
+
+Manual chart validation:
+
+```bash
+helm lint ./helm/beaconops -f helm/beaconops/values-prod.yaml \
+  --set-string postgresql.password=validation-only
+
+helm template beaconops ./helm/beaconops -n beaconops \
+  -f helm/beaconops/values-prod.yaml \
+  --set-string postgresql.password=validation-only
+```
+
+Production verification:
+
+```bash
+kubectl get nodes
+kubectl get pods,services,ingress,hpa -n beaconops
+kubectl rollout status deployment/beaconops-beaconops-backend -n beaconops
+kubectl rollout status deployment/beaconops-beaconops-frontend -n beaconops
+helm list -n beaconops
+```
+
+Retrieve the public endpoint:
+
+```bash
+kubectl get service ingress-nginx-controller -n ingress-nginx
+```
+
+PowerShell can open it directly:
+
+```powershell
+$beaconopsHost = kubectl get service ingress-nginx-controller `
+  -n ingress-nginx `
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+Start-Process "http://$beaconopsHost"
+```
+
+## Observability
+
+`prometheus-fastapi-instrumentator` exposes Prometheus metrics at `/metrics`. The chart's ServiceMonitor selects the backend Service, and Prometheus discovers it across namespaces. Grafana's dashboard sidecar imports the `BeaconOps Application Health` dashboard automatically.
+
+Dashboard panels include:
+
+- HTTP request rate by method and handler
+- p95 request latency
+- Five-minute 5xx error count
+- Ready backend replica count
+- Backend CPU usage
+
+Verify metrics:
+
+```bash
+kubectl port-forward -n beaconops service/beaconops-beaconops-backend 8000:8000
+curl http://127.0.0.1:8000/metrics
+```
+
+Open Prometheus targets:
+
+```bash
+kubectl port-forward -n monitoring service/kube-prometheus-stack-prometheus 9090:9090
+```
+
+Open `http://127.0.0.1:9090/targets` and confirm the BeaconOps target is `UP`.
+
+Open Grafana in a separate terminal:
+
+```bash
+kubectl port-forward -n monitoring service/kube-prometheus-stack-grafana 3001:80
+```
+
+Open `http://127.0.0.1:3001`, sign in with the configured administrator password, and select **BeaconOps Application Health**.
+
+Generate controlled traffic before capturing the dashboard:
+
+```bash
+REQUESTS=20000 CONCURRENCY=60 ./scripts/load-test.sh \
+  http://APPLICATION_HOST/api/incidents
+kubectl get hpa -n beaconops --watch
+```
+
+## Troubleshooting and rollback
+
+Start with these commands when a release is unhealthy:
+
+```bash
+kubectl get pods -n beaconops -o wide
+kubectl get events -n beaconops --sort-by=.lastTimestamp
+kubectl describe pod POD_NAME -n beaconops
+kubectl logs POD_NAME -n beaconops --all-containers --previous
+helm history beaconops -n beaconops
+```
+
+The deployment uses `--atomic`, so a failed upgrade rolls back automatically. The workflow concurrently retains diagnostic pod logs before Helm removes failed resources.
+
+Two controlled exercises are included:
+
+```bash
+kubectl apply -f troubleshooting/broken-image.yaml
+kubectl apply -f troubleshooting/broken-service.yaml
+```
+
+Delete each exercise after demonstrating the diagnosis:
+
+```bash
+kubectl delete -f troubleshooting/broken-image.yaml
+kubectl delete -f troubleshooting/broken-service.yaml
+```
+
+## Cost-safe teardown
+
+EKS, EC2 workers, NAT Gateway, EBS, and the Network Load Balancer incur charges. Keep the environment only for the evaluation window. Remove Kubernetes-created AWS resources before Terraform destroys the VPC.
+
+```bash
+helm uninstall beaconops -n beaconops
+kubectl delete pvc --all -n beaconops
+helm uninstall ingress-nginx -n ingress-nginx
+helm uninstall kube-prometheus-stack -n monitoring
+helm uninstall metrics-server -n kube-system
+kubectl get services --all-namespaces
+kubectl get pv
+```
+
+Wait for LoadBalancer Services and persistent volumes to disappear, then:
+
+```bash
+cd terraform
+terraform destroy
+```
+
+Confirm the prompt only after reviewing the destroy plan. Capture `Destroy complete!` for the rubric and verify that EKS, EC2 workers, NAT Gateway, load balancers, and EBS volumes are gone. Finally set the GitHub variable `ENABLE_DEPLOYMENT=false` so later documentation commits do not attempt deployment to a deleted cluster.
+
+## Grading and evidence status
+
+The repository implementation covers all ten grading modules. The following facts were verified during the final audit:
+
+- Public GitHub repository with 22 meaningful commits at audit time
+- Eight API tests across more than three endpoints using an isolated SQLite database
+- Multi-stage, numeric non-root backend and frontend images
+- Successful public pipeline with test, frontend build, two image builds, two Trivy gates, two GHCR pushes, and EKS deployment
+- Exact backend and frontend SHA manifests anonymously pullable from GHCR
+- Terraform formatting and validation successful
+- Helm lint and production template rendering successful
+- Live application reachable through the AWS Network Load Balancer
+
+Some rubric items require screenshots or presentation evidence and cannot be satisfied by source code alone. Before submission, capture:
+
+- Passing Pytest output and/or the successful CI test step
+- GHCR packages with full-SHA tags and both successful Trivy scan steps
+- Initial non-empty Terraform plan, VPC/subnets, EKS cluster, and managed nodes
+- Running Pods, Services, Ingress, HPA, and `helm list`
+- Prometheus-formatted `/metrics`, Prometheus target `UP`, and populated Grafana panels
+- Application CRUD flow and the successful GitHub Actions run
+- `terraform destroy` completion after the demo
+
+Use [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for the recording order and [`docs/RUBRIC-CHECKLIST.md`](docs/RUBRIC-CHECKLIST.md) for the complete point-by-point mapping.
+
+## Production trade-offs
+
+PostgreSQL runs inside Kubernetes to satisfy the capstone's full-stack and persistent-volume requirements. A longer-lived production environment would normally evaluate Amazon RDS, TLS termination with ACM, external secret management, multiple NAT gateways, remote Terraform state with locking, backup/restore policies, and separate staging/production environments.
