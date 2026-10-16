@@ -1,0 +1,13 @@
+frontend:
+  replicaCount: 2
+backend:
+  replicaCount: 2
+ingress:
+  host: beaconops.local
+autoscaling:
+  enabled: false
+monitoring:
+  serviceMonitor:
+    enabled: false
+  grafanaDashboard:
+    enabled: false

@@ -1,0 +1,72 @@
+nameOverride: ""
+fullnameOverride: ""
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/replace-me/beaconops-frontend
+    tag: "sha-placeholder"
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+    targetPort: 8080
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+backend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/replace-me/beaconops-backend
+    tag: "sha-placeholder"
+    pullPolicy: IfNotPresent
+  service:
+    port: 8000
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+imagePullSecrets: []
+
+postgresql:
+  enabled: true
+  image: postgres:16-alpine3.24
+  database: beaconops
+  username: beaconops
+  password: "change-me-via-helm"
+  storage: 5Gi
+  storageClassName: ""
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+externalDatabase:
+  url: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ""
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: beaconops-tls
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 60
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    additionalLabels:
+      release: kube-prometheus-stack
+  grafanaDashboard:
+    enabled: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

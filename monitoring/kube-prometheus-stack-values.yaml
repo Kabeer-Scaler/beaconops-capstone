@@ -1,0 +1,20 @@
+grafana:
+  enabled: true
+  adminPassword: "change-me-via-helm"
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+  service:
+    type: ClusterIP
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests: {cpu: 200m, memory: 512Mi}
+      limits: {cpu: 1, memory: 1Gi}
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+alertmanager:
+  enabled: true

@@ -1,0 +1,15 @@
+frontend:
+  replicaCount: 2
+backend:
+  replicaCount: 2
+ingress:
+  enabled: true
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+monitoring:
+  serviceMonitor:
+    enabled: true
+  grafanaDashboard:
+    enabled: true

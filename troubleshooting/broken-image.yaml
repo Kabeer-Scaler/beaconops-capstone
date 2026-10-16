@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beaconops-broken-image
+  namespace: beaconops
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: beaconops-broken-image}}
+  template:
+    metadata: {labels: {app: beaconops-broken-image}}
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/example/beaconops-backend:tag-does-not-exist
+          securityContext: {allowPrivilegeEscalation: false, runAsNonRoot: true}
