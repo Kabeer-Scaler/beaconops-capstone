@@ -1,0 +1,14 @@
+aws_region        = "ap-south-1"
+project_name      = "beaconops"
+environment       = "production"
+kubernetes_version = "1.37"
+node_instance_types = ["t3.medium"]
+node_min_size       = 2
+node_desired_size   = 2
+node_max_size       = 4
+
+# Replace with the repository created for this submission.
+github_repository = "YOUR_GITHUB_USERNAME/beaconops-capstone"
+
+# Set this only if the AWS account already has the GitHub Actions OIDC provider.
+github_oidc_provider_arn = ""

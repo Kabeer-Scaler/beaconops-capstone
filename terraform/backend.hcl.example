@@ -1,0 +1,7 @@
+# Pass this file with: terraform init -backend-config=backend.hcl
+# Add a backend "s3" {} block to versions.tf after creating the bucket and lock table.
+bucket         = "replace-with-your-terraform-state-bucket"
+key            = "beaconops/production/terraform.tfstate"
+region         = "ap-south-1"
+encrypt        = true
+use_lockfile   = true
