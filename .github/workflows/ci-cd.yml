@@ -180,7 +180,37 @@ jobs:
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           PULL_SECRET_ARGS=()
           if [ -n "${GHCR_PULL_TOKEN}" ]; then PULL_SECRET_ARGS=(--set 'imagePullSecrets[0].name=ghcr-pull-secret'); fi
+
+          DIAGNOSTICS_FILE="$(mktemp)"
+          (
+            while true; do
+              sleep 20
+              {
+                date -u
+                kubectl get pods,pvc -n beaconops -o wide || true
+                for pod in $(kubectl get pods -n beaconops -o name 2>/dev/null); do
+                  kubectl logs -n beaconops "${pod}" --all-containers --prefix --tail=80 2>&1 || true
+                done
+              } >> "${DIAGNOSTICS_FILE}" 2>&1
+            done
+          ) &
+          DIAGNOSTICS_PID=$!
+
+          set +e
           helm upgrade --install beaconops ./helm/beaconops --namespace beaconops --create-namespace --values helm/beaconops/values-prod.yaml --set "frontend.image.repository=ghcr.io/${OWNER}/beaconops-frontend" --set "backend.image.repository=ghcr.io/${OWNER}/beaconops-backend" --set-string "frontend.image.tag=${GITHUB_SHA}" --set-string "backend.image.tag=${GITHUB_SHA}" --set-string "postgresql.password=${POSTGRES_PASSWORD}" "${PULL_SECRET_ARGS[@]}" --atomic --wait --timeout 10m
+          HELM_STATUS=$?
+          set -e
+
+          kill "${DIAGNOSTICS_PID}" 2>/dev/null || true
+          wait "${DIAGNOSTICS_PID}" 2>/dev/null || true
+          if [ "${HELM_STATUS}" -ne 0 ]; then
+            echo "::group::Kubernetes deployment diagnostics"
+            cat "${DIAGNOSTICS_FILE}"
+            kubectl get events -n beaconops --sort-by=.lastTimestamp || true
+            echo "::endgroup::"
+            exit "${HELM_STATUS}"
+          fi
+
           kubectl rollout status deployment/beaconops-beaconops-backend -n beaconops --timeout=5m
           kubectl rollout status deployment/beaconops-beaconops-frontend -n beaconops --timeout=5m
           kubectl get pods,services,ingress,hpa -n beaconops
