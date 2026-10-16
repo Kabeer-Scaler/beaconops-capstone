@@ -102,7 +102,14 @@ module "eks" {
     eks-pod-identity-agent = { most_recent = true }
     kube-proxy             = { most_recent = true }
     vpc-cni                = { most_recent = true, before_compute = true }
-    aws-ebs-csi-driver     = { most_recent = true }
+    aws-ebs-csi-driver = {
+      most_recent                 = true
+      resolve_conflicts_on_create = "OVERWRITE"
+      pod_identity_association = [{
+        role_arn        = aws_iam_role.ebs_csi_controller.arn
+        service_account = "ebs-csi-controller-sa"
+      }]
+    }
   }
 
   eks_managed_node_groups = {
@@ -114,10 +121,6 @@ module "eks" {
       desired_size   = var.node_desired_size
       max_size       = var.node_max_size
       disk_size      = 30
-
-      iam_role_additional_policies = {
-        ebs_csi = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-      }
 
       labels = {
         workload = "application"
@@ -138,4 +141,36 @@ module "eks" {
       }
     }
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.ebs_csi_controller,
+  ]
 }
+
+data "aws_iam_policy_document" "ebs_csi_pod_identity" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession",
+    ]
+
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi_controller" {
+  name               = "${local.cluster_name}-ebs-csi-controller"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_pod_identity.json
+  tags               = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi_controller" {
+  role       = aws_iam_role.ebs_csi_controller.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
