@@ -6,7 +6,9 @@ WORKDIR /build
 COPY requirements.txt .
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install --upgrade pip setuptools==78.1.1 \
-    && /opt/venv/bin/pip install -r requirements.txt
+    && /opt/venv/bin/pip install -r requirements.txt \
+    && /opt/venv/bin/pip check \
+    && /opt/venv/bin/pip uninstall --yes wheel setuptools pip
 
 FROM python:3.12.15-alpine3.24 AS runtime
 
@@ -15,7 +17,9 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PORT=8000
 WORKDIR /app
-RUN addgroup -g 10001 -S beaconops && adduser -u 10001 -S -G beaconops -h /home/beaconops beaconops
+RUN python -m pip uninstall --yes wheel setuptools pip \
+    && addgroup -g 10001 -S beaconops \
+    && adduser -u 10001 -S -G beaconops -h /home/beaconops beaconops
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=beaconops:beaconops alembic.ini ./
 COPY --chown=beaconops:beaconops alembic ./alembic
