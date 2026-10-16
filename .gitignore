@@ -26,3 +26,4 @@ dist/
 Thumbs.db
 beaconops-test.db
 evidence/private/
+tmp/
