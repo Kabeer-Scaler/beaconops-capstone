@@ -4,7 +4,9 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 WORKDIR /build
 COPY requirements.txt .
-RUN python -m venv /opt/venv && /opt/venv/bin/pip install --upgrade pip && /opt/venv/bin/pip install -r requirements.txt
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip setuptools==78.1.1 \
+    && /opt/venv/bin/pip install -r requirements.txt
 
 FROM python:3.12.15-alpine3.24 AS runtime
 
